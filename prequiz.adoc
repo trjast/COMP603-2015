@@ -22,38 +22,50 @@ git push -u --all origin
 
 What is the difference between a set, a bag, and a sequence?
 
+These are all collections
 
 What is a language (in terms of sets and sequences)?
 
+a collection of sets that describe possible inputs, and sequences within that set
 
 What is a compiler? Name some.
 
+gcc, mingw, vs
 
 What is an interpreter? How does that differ from a compiler?
 
+An intrepreter interprets byte-code @ runtime (or near runtime) and converts it to machine code before executing.
 
 What is the derivative of a language?
 
 
+
 What is a regular expression?
 
+`/matches\ things/g` cause reasons 
 
 What is a finite automaton, and what is the difference between an NFA and a DFA?
 
+a simple representation of the langauge
 
 What is a grammar, and what is the difference between regular grammars, context-free grammars, LL(k) and LR(k)?
 
+http://lmgtfy.com/?q=context+free+grammars
 
 What is the difference between derivative parsing, recursive-descent parsing, shift-reduce parsing and parser combinators?
 
 
+
 What is a visitor?
 
+Someone who comes to your house
 
 What is the difference between a parse tree and an abstract syntax tree?
 
+AST represents the complete program, but a parse tree can be incomplete
 
 Name some optimizations.
+
 
 
 What questions do you have for me?
