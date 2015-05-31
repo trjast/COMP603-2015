@@ -1,0 +1,13 @@
+1. GCC (specifically for the C lang) - Trevor Stevens & Ben Greenier
+2. 
+    - Lexing, located in gcc/c-family/c-lex.c, is responsible for breaking up the code into tokens (or chunks) for the parser to process.
+    - Parsing, located in gcc/c/c-parser.c, is responsible for calling the lexer and resolving the tokenized expressions.
+    - Typechecking, located in gcc/c/c-typeck.c, is responsible for for error checks and some optimization.
+    - Conversion in done in gcc/c/c-convert.c, and is responsible for converting the C expressions into the various different data types.
+3. There were numerous funny comments scattered through the code. For example:
+ /* ??? Really, this should not be here.  Users should be using a
+	 proper lvalue, dammit.  But there's a long history of using casts
+	 in the output operands.  In cases like longlong.h, this becomes a
+	 primitive form of typechecking -- if the cast can be removed, then
+	 the output operand had a type of the proper width; otherwise we'll
+	 get an error.  Gross, but ...  */

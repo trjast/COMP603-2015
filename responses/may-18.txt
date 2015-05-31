@@ -1,7 +1,6 @@
 What does it mean for two sets to be disjoint?
+It means neither set has any elements in common
 
-There is no overlap; no same elements
 
 What is the union of two sets?
-
-there is overlap, some or all elements are the same
+The combination of the elements from both sets
