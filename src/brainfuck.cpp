@@ -71,6 +71,19 @@ class CommandNode : public Node {
         void accept (Visitor * v) {
             v->visit(this);
         }
+
+        // returns if something is a command
+        static bool IsCommand(char c) {
+            switch (c) {
+            case '+':
+            case '-':
+            case '<':
+            case '>':
+            case ',':
+            case '.': return true;
+            default:  return false;
+            }
+        }
 };
 
 class Container: public Node {
@@ -87,6 +100,14 @@ class Loop : public Container {
     public:
         void accept (Visitor * v) {
             v->visit(this);
+        }
+
+        static bool IsStart(char c) {
+            return c == '[';
+        }
+
+        static bool IsEnd(char c) {
+            return c == ']';
         }
 };
 
@@ -105,18 +126,22 @@ class Program : public Container {
  * Read in the file by recursive descent.
  * Modify as necessary and add whatever functions you need to get things done.
  */
-void parse(fstream & file, Container * container) {
+void parse(fstream & file, Container * root) {
     char c;
-    // How to peek at the next character
-    c = (char)file.peek();
-    // How to print out that character
-    cout << c;
-    // How to read a character from the file and advance to the next character
-    file >> c;
-    // How to print out that character
-    cout << c;
-    // How to insert a node into the container.
-    container->children.push_back(new CommandNode(c));
+
+    while (file >> c) {
+        if (CommandNode::IsCommand(c)) {
+            root->children.push_back(new CommandNode(c));
+        }
+        else if (Loop::IsStart(c)) {
+            auto loop = new Loop();
+            parse(file, loop);
+            root->children.push_back(loop);
+        }
+        else if (Loop::IsEnd(c)) {
+            return;
+        }
+    }
 }
 
 /**
