@@ -241,6 +241,41 @@ private:
     unsigned char* arr; // the actual memory we have to work in
 };
 
+// the compiler outputs c code
+class Compiler : public Visitor {
+public:    
+    // handle all the ops of the commandnode
+    void visit(const CommandNode * leaf) {
+        switch (leaf->command) {
+        case INCREMENT:     cout << "++*ptr;" << endl; break;
+        case DECREMENT:     cout << "--*ptr;" << endl; break;
+        case SHIFT_RIGHT:   cout << "++ptr;" << endl; break;
+        case SHIFT_LEFT:    cout << "--ptr;" << endl; break;
+        case INPUT:         cout << "*ptr = getchar();" << endl; break;
+        case OUTPUT:        cout << "putchar(*ptr);" << endl; break;
+        }
+    }
+
+    // handle a loop
+    void visit(const Loop * loop) {
+        cout << "while (*ptr) {" << endl;
+        for (auto it = loop->children.begin(); it != loop->children.end(); ++it) {
+            (*it)->accept(this);
+        }
+        cout << "}" << endl;
+    }
+
+    // handle a program
+    void visit(const Program * program) {
+        cout << "#include <stdio.h>" << endl;
+        cout << "int main(int argc, char** argv) {" << endl;
+        for (auto it = program->children.begin(); it != program->children.end(); ++it) {
+            (*it)->accept(this);
+        }
+        cout << '}' << endl;
+    }
+};
+
 int main(int argc, char *argv[]) {
     fstream file;
     if (argc == 1) {
@@ -248,7 +283,8 @@ int main(int argc, char *argv[]) {
     } else if (argc > 1) {
         for (int i = 1; i < argc; i++) {
             Printer printer; // how we write out
-            Evaluator eval(1024); // how we evaluate - allocate some space (1024 should be enough for these examples)
+            Compiler compile; // how we compile out
+            Evaluator eval(30000); // how we evaluate - allocate some space (1024 should be enough for these examples)
             Program program; // what we parse into
 
             file.open(argv[i], fstream::in);
@@ -256,6 +292,8 @@ int main(int argc, char *argv[]) {
 
             cout << "SRC:\n";
             program.accept(&printer); // print the source
+            cout << "C CODE:\n";
+            program.accept(&compile);
             cout << "EVAL:\n";
             program.accept(&eval); // evaluate the code
             
