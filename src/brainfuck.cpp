@@ -24,7 +24,8 @@ typedef enum {
     SHIFT_LEFT, // <
     SHIFT_RIGHT, // >
     INPUT, // ,
-    OUTPUT // .
+    OUTPUT, // .
+    ZERO
 } Command;
 
 // Forward references. Silly C++!
@@ -64,7 +65,8 @@ public:
 class CommandNode : public Node {
     public:
         Command command;
-        CommandNode(char c) {
+        int count;
+        CommandNode(char c, int count = 1) {
             switch(c) {
                 case '+': command = INCREMENT; break;
                 case '-': command = DECREMENT; break;
@@ -72,24 +74,13 @@ class CommandNode : public Node {
                 case '>': command = SHIFT_RIGHT; break;
                 case ',': command = INPUT; break;
                 case '.': command = OUTPUT; break;
+                case '0': command = ZERO; break;
                 default: throw new CommandNotValidException();
             }
+            this->count = count;
         }
         void accept (Visitor * v) {
             v->visit(this);
-        }
-
-        // returns if something is a command
-        static bool IsCommand(char c) {
-            switch (c) {
-            case '+':
-            case '-':
-            case '<':
-            case '>':
-            case ',':
-            case '.': return true;
-            default:  return false;
-            }
         }
 };
 
@@ -108,14 +99,6 @@ class Loop : public Container {
         void accept (Visitor * v) {
             v->visit(this);
         }
-
-        static bool IsStart(char c) {
-            return c == '[';
-        }
-
-        static bool IsEnd(char c) {
-            return c == ']';
-        }
 };
 
 /**
@@ -133,19 +116,48 @@ class Program : public Container {
  * Read in the file by recursive descent.
  * Modify as necessary and add whatever functions you need to get things done.
  */
-void parse(fstream & file, Container * root) {
-    char c;
+void parse(fstream & file, Container * container) {
+    char c = '\0';
+    Loop* loop = nullptr;
+    int multiples = 0;
 
-    while (file >> c) {
-        if (CommandNode::IsCommand(c)) {
-            root->children.push_back(new CommandNode(c));
-        }
-        else if (Loop::IsStart(c)) {
-            auto loop = new Loop();
+    while (file >> c)
+    {
+        switch (c)
+        {
+        case '+':
+        case '-':
+        case '<':
+        case '>':
+        case ',':
+        case '.':
+            multiples = 1;
+            while (file.peek() == c){
+                multiples++;
+                file >> c;
+            }
+            container->children.push_back(new CommandNode(c, multiples));
+            break;
+        case '[':
+            loop = new Loop();
             parse(file, loop);
-            root->children.push_back(loop);
-        }
-        else if (Loop::IsEnd(c)) {
+            if (loop->children.size() == 1)
+            {
+                CommandNode*leaf = (CommandNode*)loop->children[0];
+                if (leaf->command == '+' || leaf->command == '-')
+                {
+                    container->children.push_back(new CommandNode('0', 1));
+                    break;
+                }
+                else
+                {
+                    container->children.push_back(loop);
+                    break;
+                }
+            }
+            container->children.push_back(loop);
+            break;
+        case ']':
             return;
         }
     }
@@ -160,12 +172,27 @@ class Printer : public Visitor {
     public:
         void visit(const CommandNode * leaf) {
             switch (leaf->command) {
-                case INCREMENT:   cout << '+'; break;
-                case DECREMENT:   cout << '-'; break;
-                case SHIFT_LEFT:  cout << '<'; break;
-                case SHIFT_RIGHT: cout << '>'; break;
-                case INPUT:       cout << ','; break;
-                case OUTPUT:      cout << '.'; break;
+            case INCREMENT:   for (int i = 0; i < leaf->count; i++){
+                cout << '+';
+            } break;
+            case DECREMENT:   for (int i = 0; i < leaf->count; i++){
+                cout << '-';
+            } break;
+            case SHIFT_LEFT:  for (int i = 0; i < leaf->count; i++){
+                cout << '<';
+            } break;
+            case SHIFT_RIGHT: for (int i = 0; i < leaf->count; i++){
+                cout << '>';
+            } break;
+            case INPUT:       for (int i = 0; i < leaf->count; i++){
+                cout << ',';
+            } break;
+            case OUTPUT:      for (int i = 0; i < leaf->count; i++){
+                cout << '.';
+            } break;
+            case ZERO:        for (int i = 0; i < leaf->count; i++){
+                cout << '[+]';
+            } break;
             }
         }
         void visit(const Loop * loop) {
@@ -183,18 +210,6 @@ class Printer : public Visitor {
         }
 };
 
-// a custom exception for runtime memory overuse
-class EvaluatorRuntimeMemoryUsageException : virtual public exception {
-public:
-    EvaluatorRuntimeMemoryUsageException() : exception("Runtime used more than Evaluator allotted memory") {}
-};
-
-// a custom exception for runtime memory being decreased below zero (TODO: is this allowed? does it loop?)
-class EvaluatorRuntimeMemoryDecreaseException : virtual public exception {
-public:
-    EvaluatorRuntimeMemoryDecreaseException() : exception("Runtime decremented memory below allotted addresses") {}
-};
-
 // the evaluator. based on http://en.wikipedia.org/wiki/Brainfuck#Commands
 class Evaluator : public Visitor {
 public:
@@ -208,12 +223,27 @@ public:
     // handle all the ops of the commandnode
     void visit(const CommandNode * leaf) {
         switch (leaf->command) {
-        case INCREMENT:     ++*ptr; break;
-        case DECREMENT:     --*ptr; break;
-        case SHIFT_RIGHT:   /*if (pos++ < max)*/ ++ptr; /*else throw new EvaluatorRuntimeMemoryUsageException();*/ break;
-        case SHIFT_LEFT:    /*if (pos-- >= 0)*/ --ptr; /*else throw new EvaluatorRuntimeMemoryDecreaseException();*/ break;
-        case INPUT:         *ptr = getchar(); break;
-        case OUTPUT:        putchar(*ptr); break;
+        case INCREMENT:     for (int i = 0; i < leaf->count; i++){
+            ++*ptr;
+        } break;
+        case DECREMENT:     for (int i = 0; i < leaf->count; i++){
+            --*ptr;
+        } break;
+        case SHIFT_RIGHT:   for (int i = 0; i < leaf->count; i++){
+            ++ptr;
+        } break;
+        case SHIFT_LEFT:    for (int i = 0; i < leaf->count; i++){
+            --ptr;
+        } break;
+        case INPUT:         for (int i = 0; i < leaf->count; i++){
+            *ptr = getchar();
+        } break;
+        case OUTPUT:        for (int i = 0; i < leaf->count; i++){
+            putchar(*ptr);
+        } break;
+        case ZERO:          for (int i = 0; i < leaf->count; i++){
+            *ptr = 0;
+        } break;
         }
     }
 
@@ -247,12 +277,27 @@ public:
     // handle all the ops of the commandnode
     void visit(const CommandNode * leaf) {
         switch (leaf->command) {
-        case INCREMENT:     cout << "++*ptr;" << endl; break;
-        case DECREMENT:     cout << "--*ptr;" << endl; break;
-        case SHIFT_RIGHT:   cout << "++ptr;" << endl; break;
-        case SHIFT_LEFT:    cout << "--ptr;" << endl; break;
-        case INPUT:         cout << "*ptr = getchar();" << endl; break;
-        case OUTPUT:        cout << "putchar(*ptr);" << endl; break;
+        case INCREMENT:     for (int i = 0; i < leaf->count; i++){
+            cout << "++*ptr;" << endl;
+        } break;
+        case DECREMENT:     for (int i = 0; i < leaf->count; i++){
+            cout << "--*ptr;" << endl;
+        } break;
+        case SHIFT_RIGHT:   for (int i = 0; i < leaf->count; i++){
+            cout << "++ptr;" << endl;
+        } break;
+        case SHIFT_LEFT:    for (int i = 0; i < leaf->count; i++){
+            cout << "--ptr;" << endl;
+        } break;
+        case INPUT:         for (int i = 0; i < leaf->count; i++){
+            cout << "*ptr = getchar();" << endl;
+        } break;
+        case OUTPUT:        for (int i = 0; i < leaf->count; i++){
+            cout << "putchar(*ptr);" << endl;
+        } break;
+        case ZERO:          for (int i = 0; i < leaf->count; i++){
+            cout << "*ptr = 0;" << endl;
+        } break;
         }
     }
 
@@ -283,8 +328,8 @@ int main(int argc, char *argv[]) {
     } else if (argc > 1) {
         for (int i = 1; i < argc; i++) {
             Printer printer; // how we write out
-            Compiler compile; // how we compile out
-            Evaluator eval(30000); // how we evaluate - allocate some space (1024 should be enough for these examples)
+            //Compiler compile; // how we compile out
+            //Evaluator eval(30000); // how we evaluate - allocate some space
             Program program; // what we parse into
 
             file.open(argv[i], fstream::in);
@@ -292,10 +337,10 @@ int main(int argc, char *argv[]) {
 
             cout << "SRC:\n";
             program.accept(&printer); // print the source
-            cout << "C CODE:\n";
-            program.accept(&compile);
-            cout << "EVAL:\n";
-            program.accept(&eval); // evaluate the code
+            //cout << "C CODE:\n";
+            //program.accept(&compile);
+            //cout << "EVAL:\n";
+            //program.accept(&eval); // evaluate the code
             
             file.close();
         }
